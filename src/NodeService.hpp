@@ -356,6 +356,22 @@ class NodeService {
         uint16_t* flags,
         uint16_t* metric);
 
+    int getAddrCidrAtIdx(uint64_t net_id, unsigned int idx, char* dst, unsigned int len);
+
+    int getRouteCidrAtIdx(uint64_t net_id, unsigned int idx, char* dst, unsigned int len);
+
+    int getDnsDomain(uint64_t net_id, char* dst, unsigned int len) const;
+
+    int dnsServerCount(uint64_t net_id) const;
+
+    int getDnsServerAtIdx(uint64_t net_id, unsigned int idx, char* dst, unsigned int len) const;
+
+    int setNetworkSettings(
+        uint64_t net_id,
+        bool allowManaged,
+        bool allowGlobal,
+        bool allowDefault);
+
     int getMulticastSubAtIdx(uint64_t net_id, unsigned int idx, uint64_t* mac, uint32_t* adi);
 
     int getPathAtIdx(uint64_t peer_id, unsigned int idx, char* path, unsigned int len);

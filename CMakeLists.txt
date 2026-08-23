@@ -708,6 +708,9 @@ if(BUILD_SHARED_LIB)
 
     if(BUILD_ANDROID)
         target_link_libraries(${DYNAMIC_LIB_NAME} android log)
+        target_link_options(${DYNAMIC_LIB_NAME} PRIVATE
+            "-Wl,-z,max-page-size=16384"
+            "-Wl,-z,common-page-size=16384")
         if(CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
             target_compile_options(zto_pic PRIVATE -march=armv8-a+crypto)
         endif()

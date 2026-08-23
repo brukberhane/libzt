@@ -1218,6 +1218,52 @@ int NodeService::join(uint64_t net_id)
     return ZTS_ERR_OK;
 }
 
+int NodeService::setNetworkSettings(
+    uint64_t net_id,
+    bool allowManaged,
+    bool allowGlobal,
+    bool allowDefault)
+{
+    if (! net_id) {
+        return ZTS_ERR_ARG;
+    }
+    Mutex::Lock _l(_nets_m);
+    NetworkState& n = _nets[net_id];
+    n.settings.allowManaged = allowManaged;
+    n.settings.allowGlobal = allowGlobal;
+    n.settings.allowDefault = allowDefault;
+    return ZTS_ERR_OK;
+}
+
+static void format_sockaddr_storage_cidr(const struct sockaddr_storage* ss, char* dst, unsigned int len)
+{
+    if (! ss || ! dst || len == 0) {
+        return;
+    }
+    const struct sockaddr* sa = (const struct sockaddr*)ss;
+    if (sa->sa_family == AF_INET) {
+        const struct sockaddr_in* in4 = (const struct sockaddr_in*)sa;
+        char ip[INET6_ADDRSTRLEN] = { 0 };
+        inet_ntop(AF_INET, &(in4->sin_addr), ip, sizeof(ip));
+        int prefix = ntohs(in4->sin_port);
+        if (prefix <= 0 || prefix > 32) {
+            prefix = 32;
+        }
+        OSUtils::ztsnprintf(dst, len, "%s/%d", ip, prefix);
+        return;
+    }
+    if (sa->sa_family == AF_INET6) {
+        const struct sockaddr_in6* in6 = (const struct sockaddr_in6*)sa;
+        char ip[INET6_ADDRSTRLEN] = { 0 };
+        inet_ntop(AF_INET6, &(in6->sin6_addr), ip, sizeof(ip));
+        int prefix = ntohs(in6->sin6_port);
+        if (prefix <= 0 || prefix > 128) {
+            prefix = 128;
+        }
+        OSUtils::ztsnprintf(dst, len, "%s/%d", ip, prefix);
+    }
+}
+
 int NodeService::leave(uint64_t net_id)
 {
     if (! net_id) {
@@ -1353,6 +1399,103 @@ int NodeService::getRouteAtIdx(
     *flags = netState.config.routes[idx].flags;
     *metric = netState.config.routes[idx].metric;
     return ZTS_ERR_OK;
+}
+
+int NodeService::getAddrCidrAtIdx(uint64_t net_id, unsigned int idx, char* dst, unsigned int len)
+{
+    if (! dst || len == 0) {
+        return ZTS_ERR_ARG;
+    }
+    std::map<uint64_t, NetworkState>::const_iterator n(_nets.find(net_id));
+    if (n == _nets.end()) {
+        return ZTS_ERR_NO_RESULT;
+    }
+    auto netState = n->second;
+    if (idx >= netState.config.assignedAddressCount) {
+        return ZTS_ERR_ARG;
+    }
+    format_sockaddr_storage_cidr(&(netState.config.assignedAddresses[idx]), dst, len);
+    return ZTS_ERR_OK;
+}
+
+int NodeService::getRouteCidrAtIdx(uint64_t net_id, unsigned int idx, char* dst, unsigned int len)
+{
+    if (! dst || len == 0) {
+        return ZTS_ERR_ARG;
+    }
+    std::map<uint64_t, NetworkState>::const_iterator n(_nets.find(net_id));
+    if (n == _nets.end()) {
+        return ZTS_ERR_NO_RESULT;
+    }
+    auto netState = n->second;
+    if (idx >= netState.config.routeCount) {
+        return ZTS_ERR_ARG;
+    }
+    format_sockaddr_storage_cidr(&(netState.config.routes[idx].target), dst, len);
+    return ZTS_ERR_OK;
+}
+
+int NodeService::getDnsDomain(uint64_t net_id, char* dst, unsigned int len) const
+{
+    if (! dst || len == 0) {
+        return ZTS_ERR_ARG;
+    }
+    std::map<uint64_t, NetworkState>::const_iterator n(_nets.find(net_id));
+    if (n == _nets.end()) {
+        return ZTS_ERR_NO_RESULT;
+    }
+    strncpy(dst, n->second.config.dns.domain, len - 1);
+    dst[len - 1] = '\0';
+    return ZTS_ERR_OK;
+}
+
+int NodeService::dnsServerCount(uint64_t net_id) const
+{
+    std::map<uint64_t, NetworkState>::const_iterator n(_nets.find(net_id));
+    if (n == _nets.end()) {
+        return 0;
+    }
+    int count = 0;
+    for (unsigned int i = 0; i < ZT_MAX_DNS_SERVERS; ++i) {
+        if (n->second.config.dns.server_addr[i].ss_family != 0) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+int NodeService::getDnsServerAtIdx(uint64_t net_id, unsigned int idx, char* dst, unsigned int len) const
+{
+    if (! dst || len == 0) {
+        return ZTS_ERR_ARG;
+    }
+    std::map<uint64_t, NetworkState>::const_iterator n(_nets.find(net_id));
+    if (n == _nets.end()) {
+        return ZTS_ERR_NO_RESULT;
+    }
+    unsigned int found = 0;
+    for (unsigned int i = 0; i < ZT_MAX_DNS_SERVERS; ++i) {
+        const struct sockaddr_storage* ss = &(n->second.config.dns.server_addr[i]);
+        if (ss->ss_family == 0) {
+            continue;
+        }
+        if (found == idx) {
+            const struct sockaddr* sa = (const struct sockaddr*)ss;
+            if (sa->sa_family == AF_INET) {
+                const struct sockaddr_in* in4 = (const struct sockaddr_in*)sa;
+                inet_ntop(AF_INET, &(in4->sin_addr), dst, len);
+                return ZTS_ERR_OK;
+            }
+            if (sa->sa_family == AF_INET6) {
+                const struct sockaddr_in6* in6 = (const struct sockaddr_in6*)sa;
+                inet_ntop(AF_INET6, &(in6->sin6_addr), dst, len);
+                return ZTS_ERR_OK;
+            }
+            return ZTS_ERR_NO_RESULT;
+        }
+        ++found;
+    }
+    return ZTS_ERR_NO_RESULT;
 }
 
 int NodeService::getMulticastSubAtIdx(uint64_t net_id, unsigned int idx, uint64_t* mac, uint32_t* adi)
