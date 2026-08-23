@@ -431,11 +431,43 @@ int zts_connect(int fd, const char* ipstr, unsigned short port, int timeout_ms)
 
     if (addrlen > 0 && sa != NULL) {
         if (zts_get_blocking(fd)) {
+            bool attempt_in_progress = false;
             do {
-                err = zts_bsd_connect(fd, sa, addrlen);
+                if (! attempt_in_progress) {
+                    err = zts_bsd_connect(fd, sa, addrlen);
+                    if (err == 0 || zts_errno == ZTS_EISCONN) {
+                        err = ZTS_ERR_OK;
+                        break;
+                    }
+                    if (zts_errno == ZTS_EINPROGRESS || zts_errno == ZTS_EALREADY) {
+                        // Connect already underway on this pcb; poll SO_ERROR
+                        // instead of re-calling connect() (which can abort or
+                        // restart the in-flight handshake).
+                        attempt_in_progress = true;
+                    }
+                    // Other errors: initial SYNs may be lost while the
+                    // transport-triggered link comes up — retry fresh.
+                }
+                else {
+                    int so_error = 0;
+                    zts_socklen_t optlen = sizeof(so_error);
+                    if (zts_bsd_getsockopt(fd, ZTS_SOL_SOCKET, ZTS_SO_ERROR, &so_error, &optlen) == 0) {
+                        if (so_error == 0) {
+                            err = ZTS_ERR_OK;
+                            break;
+                        }
+                        if (so_error != ZTS_EINPROGRESS && so_error != ZTS_EALREADY) {
+                            attempt_in_progress = false;
+                            err = ZTS_ERR_SOCKET;
+                        }
+                    }
+                }
                 zts_util_delay(connect_delay);
                 n_tries--;
-            } while ((err < 0) && (zts_errno != 0) && (n_tries > 0));
+            } while (n_tries > 0);
+        }
+        else {
+            err = zts_bsd_connect(fd, sa, addrlen);
         }
         return err;
     }

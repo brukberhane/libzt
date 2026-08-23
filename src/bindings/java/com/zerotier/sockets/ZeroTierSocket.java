@@ -139,6 +139,28 @@ public class ZeroTierSocket {
     }
 
     /**
+     * Connect to a remote host with an explicit timeout for the entire
+     * transport-triggered link establishment + TCP handshake.
+     */
+    public void connect(InetAddress remoteAddr, int remotePort, int timeoutMs) throws IOException
+    {
+        if (_zfd < 0) {
+            throw new IOException("Invalid socket (fd < 0)");
+        }
+        if ((remoteAddr instanceof Inet4Address) && _family != ZeroTierNative.ZTS_AF_INET) {
+            throw new IOException("Invalid address type. Socket is of type AF_INET");
+        }
+        if ((remoteAddr instanceof Inet6Address) && _family != ZeroTierNative.ZTS_AF_INET6) {
+            throw new IOException("Invalid address type. Socket is of type AF_INET6");
+        }
+        int err;
+        if ((err = ZeroTierNative.zts_connect(_zfd, remoteAddr.getHostAddress(), remotePort, timeoutMs)) < 0) {
+            throw new IOException("Error while connecting to remote host (" + err + ")");
+        }
+        _isConnected = true;
+    }
+
+    /**
      * Connect to a remote host
      * @param remoteAddr Remote address to which this socket should connect
      * @param remotePort Remote port to which this socket should connect

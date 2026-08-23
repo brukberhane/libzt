@@ -3032,6 +3032,22 @@ ZTS_API int ZTCALL zts_core_query_route(
     uint16_t* flags,
     uint16_t* metric);
 
+ZTS_API int ZTCALL zts_core_query_addr_cidr(uint64_t net_id, unsigned int idx, char* dst, unsigned int len);
+
+ZTS_API int ZTCALL zts_core_query_route_cidr(uint64_t net_id, unsigned int idx, char* dst, unsigned int len);
+
+ZTS_API int ZTCALL zts_core_query_dns_domain(uint64_t net_id, char* dst, unsigned int len);
+
+ZTS_API int ZTCALL zts_core_query_dns_count(uint64_t net_id);
+
+ZTS_API int ZTCALL zts_core_query_dns_server(uint64_t net_id, unsigned int idx, char* dst, unsigned int len);
+
+ZTS_API int ZTCALL zts_net_set_settings(
+    uint64_t net_id,
+    int allow_managed,
+    int allow_global,
+    int allow_default);
+
 /**
  * @brief Lock the core service so that queries about addresses, routes, paths, etc. can be
  * performed.

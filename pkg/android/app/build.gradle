@@ -12,7 +12,8 @@ android {
             cmake {
                 cppFlags ""
                 version '3.22.1'
-                arguments "-DZTS_ENABLE_JAVA=ON"
+                arguments "-DZTS_ENABLE_JAVA=ON",
+                          "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
             }
         }
         ndk {
@@ -34,7 +35,7 @@ android {
         }
     }
 
-    ndkVersion '25.1.8937393'
+    ndkVersion '28.2.13676358'
 
     namespace 'com.example.zerotier'
     

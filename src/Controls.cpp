@@ -423,6 +423,46 @@ int zts_core_query_route(
     return zts_service->getRouteAtIdx(net_id, idx, target, via, len, flags, metric);
 }
 
+int zts_core_query_addr_cidr(uint64_t net_id, unsigned int idx, char* dst, unsigned int len)
+{
+    ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
+    return zts_service->getAddrCidrAtIdx(net_id, idx, dst, len);
+}
+
+int zts_core_query_route_cidr(uint64_t net_id, unsigned int idx, char* dst, unsigned int len)
+{
+    ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
+    return zts_service->getRouteCidrAtIdx(net_id, idx, dst, len);
+}
+
+int zts_core_query_dns_domain(uint64_t net_id, char* dst, unsigned int len)
+{
+    ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
+    return zts_service->getDnsDomain(net_id, dst, len);
+}
+
+int zts_core_query_dns_count(uint64_t net_id)
+{
+    ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
+    return zts_service->dnsServerCount(net_id);
+}
+
+int zts_core_query_dns_server(uint64_t net_id, unsigned int idx, char* dst, unsigned int len)
+{
+    ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
+    return zts_service->getDnsServerAtIdx(net_id, idx, dst, len);
+}
+
+int zts_net_set_settings(uint64_t net_id, int allow_managed, int allow_global, int allow_default)
+{
+    ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
+    return zts_service->setNetworkSettings(
+        net_id,
+        allow_managed != 0,
+        allow_global != 0,
+        allow_default != 0);
+}
+
 int zts_core_query_path_count(uint64_t peer_id)
 {
     ACQUIRE_SERVICE(ZTS_ERR_SERVICE);

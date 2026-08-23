@@ -493,17 +493,17 @@ public class ZeroTierNative {
     public static native int zts_core_lock_release();
     public static native int zts_core_query_addr_count(long net_id);
     public static native int zts_core_query_addr(long net_id, int idx, String addr, int len);
+    public static native String zts_core_query_addr_cidr(long net_id, int idx);
     public static native int zts_core_query_route_count(long net_id);
-    /*
-    public static native int zts_core_query_route(
+    public static native String zts_core_query_route_cidr(long net_id, int idx);
+    public static native String zts_core_query_dns_domain(long net_id);
+    public static native int zts_core_query_dns_count(long net_id);
+    public static native String zts_core_query_dns_server(long net_id, int idx);
+    public static native int zts_net_set_settings(
         long net_id,
-         int idx,
-        String target,
-        String via,
-         int len,
-        short* flags,
-        short* metric);
-    */
+        int allowManaged,
+        int allowGlobal,
+        int allowDefault);
     public static native int zts_core_query_path_count(long peer_id);
     public static native int zts_core_query_path(long peer_id, int idx, String dst, int len);
     public static native int zts_core_query_mc_count(long net_id);

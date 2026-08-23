@@ -453,16 +453,14 @@ JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1node_1get_1
 
 JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1node_1stop(JNIEnv* jenv, jclass clazz)
 {
-    int res = zts_node_stop();
-    java_detach_from_thread();
-    return res;
+    // No java_detach_from_thread(): callers are Java-managed threads; detaching
+    // them aborts ART ("attempting to detach while still running code").
+    return zts_node_stop();
 }
 
 JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1node_1free(JNIEnv* jenv, jclass clazz)
 {
-    int res = zts_node_free();
-    java_detach_from_thread();
-    return res;
+    return zts_node_free();
 }
 
 JNIEXPORT jint JNICALL
@@ -1011,7 +1009,82 @@ JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1core_1query
     jstring addr,
     jint len)
 {
-    return ZTS_ERR_OK;
+    (void)jenv;
+    (void)clazz;
+    (void)addr;
+    (void)len;
+    char buffer[128] = { 0 };
+    return zts_core_query_addr_cidr((uint64_t)net_id, (unsigned int)idx, buffer, sizeof(buffer));
+}
+
+JNIEXPORT jstring JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1core_1query_1addr_1cidr(
+    JNIEnv* jenv,
+    jclass clazz,
+    jlong net_id,
+    jint idx)
+{
+    char buffer[128] = { 0 };
+    if (zts_core_query_addr_cidr((uint64_t)net_id, (unsigned int)idx, buffer, sizeof(buffer)) != ZTS_ERR_OK) {
+        return NULL;
+    }
+    return jenv->NewStringUTF(buffer);
+}
+
+JNIEXPORT jstring JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1core_1query_1route_1cidr(
+    JNIEnv* jenv,
+    jclass clazz,
+    jlong net_id,
+    jint idx)
+{
+    char buffer[128] = { 0 };
+    if (zts_core_query_route_cidr((uint64_t)net_id, (unsigned int)idx, buffer, sizeof(buffer)) != ZTS_ERR_OK) {
+        return NULL;
+    }
+    return jenv->NewStringUTF(buffer);
+}
+
+JNIEXPORT jstring JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1core_1query_1dns_1domain(
+    JNIEnv* jenv,
+    jclass clazz,
+    jlong net_id)
+{
+    char buffer[128] = { 0 };
+    if (zts_core_query_dns_domain((uint64_t)net_id, buffer, sizeof(buffer)) != ZTS_ERR_OK) {
+        return NULL;
+    }
+    return jenv->NewStringUTF(buffer);
+}
+
+JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1core_1query_1dns_1count(
+    JNIEnv* jenv,
+    jclass clazz,
+    jlong net_id)
+{
+    return zts_core_query_dns_count((uint64_t)net_id);
+}
+
+JNIEXPORT jstring JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1core_1query_1dns_1server(
+    JNIEnv* jenv,
+    jclass clazz,
+    jlong net_id,
+    jint idx)
+{
+    char buffer[128] = { 0 };
+    if (zts_core_query_dns_server((uint64_t)net_id, (unsigned int)idx, buffer, sizeof(buffer)) != ZTS_ERR_OK) {
+        return NULL;
+    }
+    return jenv->NewStringUTF(buffer);
+}
+
+JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1net_1set_1settings(
+    JNIEnv* jenv,
+    jclass clazz,
+    jlong net_id,
+    jint allow_managed,
+    jint allow_global,
+    jint allow_default)
+{
+    return zts_net_set_settings((uint64_t)net_id, allow_managed, allow_global, allow_default);
 }
 
 JNIEXPORT jint JNICALL
