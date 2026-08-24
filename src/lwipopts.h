@@ -78,6 +78,14 @@
 #define LWIP_NETIF_EXT_STATUS_CALLBACK  0
 #define LWIP_NETIF_LINK_CALLBACK        0
 #define LWIP_NETIF_REMOVE_CALLBACK      0
+// ZeroTier managed routes (off-subnet prefixes via a gateway on the overlay)
+// are applied at OS level by ZeroTierOne and never reach lwIP. These hooks
+// let NodeService's route table (Routing.cpp) select the netif and gateway.
+#define LWIP_HOOK_FILENAME              "zts_lwip_hooks.h"
+#define LWIP_HOOK_IP4_ROUTE(dest)       zts_ip4_route_hook(dest)
+#define LWIP_HOOK_ETHARP_GET_GW(netif, dest) zts_etharp_get_gw_hook(netif, dest)
+#define LWIP_HOOK_IP6_ROUTE(src, dest)  zts_ip6_route_hook(dest, src)
+#define LWIP_HOOK_ND6_GET_GW(netif, dest) zts_nd6_get_gw_hook(netif, dest)
 
 /*------------------------------------------------------------------------------
 ------------------------------------ Presets -----------------------------------
