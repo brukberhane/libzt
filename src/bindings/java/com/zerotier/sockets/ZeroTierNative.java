@@ -504,6 +504,7 @@ public class ZeroTierNative {
         int allowManaged,
         int allowGlobal,
         int allowDefault);
+    public static native int zts_net_set_managed_whitelist(long net_id, String cidrs);
     public static native int zts_core_query_path_count(long peer_id);
     public static native int zts_core_query_path(long peer_id, int idx, String dst, int len);
     public static native int zts_core_query_mc_count(long net_id);

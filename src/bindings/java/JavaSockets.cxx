@@ -1087,6 +1087,23 @@ JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1net_1set_1s
     return zts_net_set_settings((uint64_t)net_id, allow_managed, allow_global, allow_default);
 }
 
+JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1net_1set_1managed_1whitelist(
+    JNIEnv* jenv,
+    jclass clazz,
+    jlong net_id,
+    jstring cidrs)
+{
+    const char* utf_string = cidrs ? jenv->GetStringUTFChars(cidrs, NULL) : NULL;
+    if (cidrs && ! utf_string) {
+        return ZTS_ERR_GENERAL;
+    }
+    int retval = zts_net_set_managed_whitelist((uint64_t)net_id, utf_string);
+    if (utf_string) {
+        jenv->ReleaseStringUTFChars(cidrs, utf_string);
+    }
+    return retval;
+}
+
 JNIEXPORT jint JNICALL
 Java_com_zerotier_sockets_ZeroTierNative_zts_1core_1query_1route_1count(JNIEnv* jenv, jclass clazz, jlong net_id)
 {

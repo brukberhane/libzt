@@ -379,6 +379,14 @@ class NodeService {
      */
     void rebuildRouteCache();
 
+    /**
+     * Replace the allowManaged whitelist for a network.
+     *
+     * @param net_id Network ID
+     * @param cidrs Comma/whitespace separated CIDR prefixes, NULL or empty clears the whitelist
+     */
+    int setManagedWhitelist(uint64_t net_id, const char* cidrs);
+
     int getMulticastSubAtIdx(uint64_t net_id, unsigned int idx, uint64_t* mac, uint32_t* adi);
 
     int getPathAtIdx(uint64_t peer_id, unsigned int idx, char* path, unsigned int len);

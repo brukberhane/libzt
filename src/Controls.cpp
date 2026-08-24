@@ -463,6 +463,12 @@ int zts_net_set_settings(uint64_t net_id, int allow_managed, int allow_global, i
         allow_default != 0);
 }
 
+int zts_net_set_managed_whitelist(uint64_t net_id, const char* cidrs)
+{
+    ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
+    return zts_service->setManagedWhitelist(net_id, cidrs);
+}
+
 int zts_core_query_path_count(uint64_t peer_id)
 {
     ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
