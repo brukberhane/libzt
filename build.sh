@@ -568,7 +568,7 @@ ANDROID_PKG_PROJ_DIR=$(pwd)/pkg/android
 GRADLE_ARGS=--stacktrace
 # for our purposes we limit this to execution on macOS
 if [[ $OSNAME = *"linux"* ]]; then
-    export ANDROID_HOME=/usr/lib/android-sdk/
+    export ANDROID_HOME=${ANDROID_HOME:-/usr/lib/android-sdk/}
 fi
 if [[ $OSNAME = *"darwin"* ]]; then
     export ANDROID_HOME=/Users/$USER/Library/Android/sdk
