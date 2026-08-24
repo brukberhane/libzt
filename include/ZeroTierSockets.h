@@ -3049,6 +3049,24 @@ ZTS_API int ZTCALL zts_net_set_settings(
     int allow_default);
 
 /**
+ * @brief Set the whitelist of prefixes a network is allowed to configure
+ * (managed routes and addresses).
+ *
+ * When non-empty, a managed route target is only honored if it is contained
+ * in one of the whitelisted prefixes. When empty (and allow_managed is set),
+ * all private/pseudoprivate prefixes are allowed. Mirrors ZeroTierOne's
+ * allowManagedWhitelist semantics.
+ *
+ * @param net_id Network ID
+ * @param cidrs Comma and/or whitespace separated list of CIDR prefixes
+ * (e.g. "10.0.0.0/8,192.168.0.0/16"). NULL or empty clears the whitelist.
+ *
+ * @return `ZTS_ERR_OK` if successful. `ZTS_ERR_ARG` if a prefix is invalid.
+ * `ZTS_ERR_SERVICE` if the core service is unavailable.
+ */
+ZTS_API int ZTCALL zts_net_set_managed_whitelist(uint64_t net_id, const char* cidrs);
+
+/**
  * @brief Lock the core service so that queries about addresses, routes, paths, etc. can be
  * performed.
  *

@@ -1262,6 +1262,36 @@ int NodeService::setNetworkSettings(
     return ZTS_ERR_OK;
 }
 
+int NodeService::setManagedWhitelist(uint64_t net_id, const char* cidrs)
+{
+    if (! net_id) {
+        return ZTS_ERR_ARG;
+    }
+    Mutex::Lock _l(_nets_m);
+    NetworkState& n = _nets[net_id];
+    n.settings.allowManagedWhitelist.clear();
+    if (cidrs && *cidrs) {
+        // Comma and/or whitespace separated list of CIDR prefixes
+        std::string list(cidrs);
+        size_t pos = 0;
+        while (pos < list.size()) {
+            size_t end = list.find_first_of(", \t", pos);
+            std::string token = list.substr(pos, end == std::string::npos ? end : end - pos);
+            pos = (end == std::string::npos) ? list.size() : end + 1;
+            if (token.empty()) {
+                continue;
+            }
+            InetAddress addr(token.c_str());
+            if (addr.ss_family != AF_INET && addr.ss_family != AF_INET6) {
+                return ZTS_ERR_ARG;
+            }
+            n.settings.allowManagedWhitelist.push_back(addr);
+        }
+    }
+    rebuildRouteCache();
+    return ZTS_ERR_OK;
+}
+
 namespace {
 
 // Checks if a managed route target is allowed. Ported verbatim from
