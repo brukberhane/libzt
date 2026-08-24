@@ -372,6 +372,13 @@ class NodeService {
         bool allowGlobal,
         bool allowDefault);
 
+    /**
+     * Rebuild the managed-route table consulted by the lwIP routing
+     * hooks (Routing.cpp). Call with _nets_m held; safe to call without it
+     * only where no concurrent _nets access is possible.
+     */
+    void rebuildRouteCache();
+
     int getMulticastSubAtIdx(uint64_t net_id, unsigned int idx, uint64_t* mac, uint32_t* adi);
 
     int getPathAtIdx(uint64_t peer_id, unsigned int idx, char* path, unsigned int len);

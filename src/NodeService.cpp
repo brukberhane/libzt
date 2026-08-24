@@ -25,6 +25,7 @@
 #include "InetAddress.hpp"
 #include "Mutex.hpp"
 #include "Node.hpp"
+#include "Routing.hpp"
 #include "Utilities.hpp"
 #include "VirtualTap.hpp"
 
@@ -874,9 +875,11 @@ int NodeService::nodeVirtualNetworkConfigFunction(
             if (n.tap) {   // sanity check
                 syncManagedStuff(n);
                 n.tap->setMtu(nwc->mtu);
+                rebuildRouteCache();
             }
             else {
                 _nets.erase(net_id);
+                rebuildRouteCache();
                 return -999;   // tap init failed
             }
             if (op == ZT_VIRTUAL_NETWORK_CONFIG_OPERATION_CONFIG_UPDATE) {
@@ -887,9 +890,13 @@ int NodeService::nodeVirtualNetworkConfigFunction(
         case ZT_VIRTUAL_NETWORK_CONFIG_OPERATION_DESTROY:
             sendEventToUser(ZTS_EVENT_NETWORK_DOWN, (void*)&n);
             if (n.tap) {   // sanity check
+                VirtualTap* deadTap = n.tap;
                 *nuptr = (void*)0;
-                delete n.tap;
+                // Drop this net's routes before the tap (and its netif) dies
+                // so the lwIP route hook can never hand out a dead netif.
                 _nets.erase(net_id);
+                rebuildRouteCache();
+                delete deadTap;
                 if (_allowNetworkCaching) {
                     if (op == ZT_VIRTUAL_NETWORK_CONFIG_OPERATION_DESTROY) {
                         char nlcpath[256] = { 0 };
@@ -905,6 +912,7 @@ int NodeService::nodeVirtualNetworkConfigFunction(
             }
             else {
                 _nets.erase(net_id);
+                rebuildRouteCache();
             }
             break;
     }
@@ -1250,7 +1258,117 @@ int NodeService::setNetworkSettings(
     n.settings.allowManaged = allowManaged;
     n.settings.allowGlobal = allowGlobal;
     n.settings.allowDefault = allowDefault;
+    rebuildRouteCache();
     return ZTS_ERR_OK;
+}
+
+namespace {
+
+// Checks if a managed route target is allowed. Ported verbatim from
+// ZeroTierOne's OneService::checkIfManagedIsAllowed — keep in sync.
+bool managedRouteAllowed(const NodeService::NetworkSettings& settings, const InetAddress& target)
+{
+    if (! settings.allowManaged) {
+        return false;
+    }
+    if (! settings.allowManagedWhitelist.empty()) {
+        bool allowed = false;
+        for (const InetAddress& addr : settings.allowManagedWhitelist) {
+            if (addr.containsAddress(target) && addr.netmaskBits() <= target.netmaskBits()) {
+                allowed = true;
+                break;
+            }
+        }
+        if (! allowed) {
+            return false;
+        }
+    }
+    if (target.isDefaultRoute()) {
+        return settings.allowDefault;
+    }
+    switch (target.ipScope()) {
+        case InetAddress::IP_SCOPE_NONE:
+        case InetAddress::IP_SCOPE_MULTICAST:
+        case InetAddress::IP_SCOPE_LOOPBACK:
+        case InetAddress::IP_SCOPE_LINK_LOCAL:
+            return false;
+        case InetAddress::IP_SCOPE_GLOBAL:
+            return settings.allowGlobal;
+        default:
+            return true;
+    }
+}
+
+}   // namespace
+
+void NodeService::rebuildRouteCache()
+{
+    // Assumes _nets_m is locked (called from config update paths).
+    //
+    // ZeroTierOne applies managed routes at the OS level only, so without
+    // this lwIP has no way to reach off-subnet prefixes and zts_connect()
+    // fails with ERR_RTE. The lwIP route/gateway hooks (Routing.cpp)
+    // consult the table built here.
+    std::vector<ZtsRoute> routes;
+    for (std::map<uint64_t, NetworkState>::iterator it = _nets.begin(); it != _nets.end(); ++it) {
+        NetworkState& n = it->second;
+        for (unsigned int i = 0; i < n.config.routeCount; ++i) {
+            const InetAddress* ztTarget = reinterpret_cast<const InetAddress*>(&(n.config.routes[i].target));
+            if (! managedRouteAllowed(n.settings, *ztTarget)) {
+                continue;
+            }
+            const struct sockaddr* target = (const struct sockaddr*)ztTarget;
+            ZtsRoute route;
+            memset(&route, 0, sizeof(route));
+            route.netId = it->first;
+            route.metric = n.config.routes[i].metric;
+            int addrLen = 0;
+            if (target->sa_family == AF_INET) {
+                const struct sockaddr_in* t4 = (const struct sockaddr_in*)target;
+                route.isV6 = false;
+                route.prefixLen = (uint8_t)ntohs(t4->sin_port);   // ZeroTier stores the prefix length in the port field
+                if (route.prefixLen > 32) {
+                    continue;
+                }
+                memcpy(route.target, &(t4->sin_addr), 4);
+                addrLen = 4;
+                route.netif = n.tap ? n.tap->netif4 : NULL;
+            }
+            else if (target->sa_family == AF_INET6) {
+                const struct sockaddr_in6* t6 = (const struct sockaddr_in6*)target;
+                route.isV6 = true;
+                route.prefixLen = (uint8_t)ntohs(t6->sin6_port);
+                if (route.prefixLen > 128) {
+                    continue;
+                }
+                memcpy(route.target, &(t6->sin6_addr), 16);
+                addrLen = 16;
+                route.netif = n.tap ? n.tap->netif6 : NULL;
+            }
+            else {
+                continue;
+            }
+            // Mask the target down to the network address
+            int bits = route.prefixLen;
+            for (int b = 0; b < addrLen; ++b, bits -= 8) {
+                if (bits < 0) {
+                    route.target[b] = 0;
+                }
+                else if (bits < 8) {
+                    route.target[b] &= (uint8_t)(0xFF << (8 - bits));
+                }
+            }
+            const struct sockaddr* via = (const struct sockaddr*)&(n.config.routes[i].via);
+            if (via->sa_family == AF_INET && target->sa_family == AF_INET) {
+                memcpy(route.via, &(((const struct sockaddr_in*)via)->sin_addr), 4);
+            }
+            if (via->sa_family == AF_INET6 && target->sa_family == AF_INET6) {
+                memcpy(route.via, &(((const struct sockaddr_in6*)via)->sin6_addr), 16);
+            }
+            routes.push_back(route);
+        }
+    }
+    zts_routes_replace(routes);
 }
 
 static void format_sockaddr_storage_cidr(const struct sockaddr_storage* ss, char* dst, unsigned int len)
