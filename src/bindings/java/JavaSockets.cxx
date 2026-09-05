@@ -549,9 +549,35 @@ JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1init_1black
 }
 
 JNIEXPORT jint JNICALL
-Java_com_zerotier_sockets_ZeroTierNative_zts_1init_1set_roots(JNIEnv* jenv, jobject thisObj, void* roots_data, jint len)
+Java_com_zerotier_sockets_ZeroTierNative_zts_1init_1set_1roots(JNIEnv* jenv, jclass clazz, jbyteArray buf)
 {
-    return ZTS_ERR_OK;
+    if (! buf) {
+        return ZTS_ERR_ARG;
+    }
+    void* data = jenv->GetPrimitiveArrayCritical(buf, NULL);
+    if (! data) {
+        return ZTS_ERR_GENERAL;
+    }
+    int retval = zts_init_set_roots(data, (unsigned int)jenv->GetArrayLength(buf));
+    jenv->ReleasePrimitiveArrayCritical(buf, data, JNI_ABORT);
+    return retval;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_com_zerotier_sockets_ZeroTierNative_zts_1util_1make_1dummy_1planet(JNIEnv* jenv, jclass clazz)
+{
+    unsigned char buf[ZTS_WORLD_MAX_SERIALIZED_LENGTH];
+    unsigned int len = sizeof(buf);
+    int rc = zts_util_make_dummy_planet(buf, &len);
+    if (rc != ZTS_ERR_OK) {
+        return NULL;
+    }
+    jbyteArray arr = jenv->NewByteArray((jsize)len);
+    if (! arr) {
+        return NULL;
+    }
+    jenv->SetByteArrayRegion(arr, 0, (jsize)len, (const jbyte*)buf);
+    return arr;
 }
 
 JNIEXPORT jint JNICALL

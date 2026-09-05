@@ -142,6 +142,26 @@ int zts_util_sign_root_set(
     return ZTS_ERR_OK;
 }
 
+int zts_util_make_dummy_planet(void* roots_out, unsigned int* roots_len)
+{
+    if (! roots_out || ! roots_len) {
+        return ZTS_ERR_ARG;
+    }
+    C25519::Pair kp(C25519::generate());
+    std::vector<World::Root> roots;
+    World nw = World::make(World::TYPE_PLANET, ZTS_WORLD_ID_DUMMY, 1, kp.pub, roots, kp);
+    Buffer<ZT_WORLD_MAX_SERIALIZED_LENGTH> outtmp;
+    nw.serialize(outtmp, false);
+    World testw;
+    testw.deserialize(outtmp, 0);
+    if (testw != nw) {
+        return ZTS_ERR_GENERAL;
+    }
+    memcpy(roots_out, (char*)outtmp.data(), outtmp.size());
+    *roots_len = outtmp.size();
+    return ZTS_ERR_OK;
+}
+
 void native_ss_to_zts_ss(struct zts_sockaddr_storage* ss_out, const struct sockaddr_storage* ss_in)
 {
     if (ss_in->ss_family == AF_INET) {

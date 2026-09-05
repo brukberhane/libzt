@@ -99,6 +99,17 @@ public class ZeroTierNode {
     }
 
     /**
+     * (Optional) Set a custom planet (root set) before {@code start()}.
+     *
+     * @param rootsData Serialized TYPE_PLANET world blob
+     * @return return
+     */
+    public int initSetRoots(byte[] rootsData)
+    {
+        return ZeroTierNative.zts_init_set_roots(rootsData);
+    }
+
+    /**
      * (Optional) Whether caching of root topology to storage is allowed. This
      * is true by default if {@code initFromStorage()} is used. Note that this is an
      * initialization method that can only be called before {@code start()}.

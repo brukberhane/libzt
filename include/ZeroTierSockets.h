@@ -3112,6 +3112,21 @@ ZTS_API int ZTCALL zts_util_sign_root_set(
     uint64_t ts,
     zts_root_set_t* roots_spec);
 
+#define ZTS_WORLD_ID_DUMMY 0x5e2071e4b0000001ULL
+
+/** Matches `ZT_WORLD_MAX_SERIALIZED_LENGTH` in node/World.hpp (avoid that include from JNI). */
+#define ZTS_WORLD_MAX_SERIALIZED_LENGTH 8384
+
+/**
+ * @brief Generate a signed TYPE_PLANET world with no roots (airgap placeholder).
+ *
+ * Does not read or write key files and does not return private key material.
+ *
+ * @param roots_out Buffer for serialized world (min ZT_WORLD_MAX_SERIALIZED_LENGTH)
+ * @param roots_len In: buffer capacity hint; out: serialized length
+ */
+ZTS_API int ZTCALL zts_util_make_dummy_planet(void* roots_out, unsigned int* roots_len);
+
 /**
  * @brief Platform-agnostic delay
  *

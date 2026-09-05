@@ -427,7 +427,8 @@ public class ZeroTierNative {
     public static native int zts_init_set_port(short port);
     // public static native int zts_init_from_memory(/*const*/ char* key,  int len);
     public static native int zts_init_blacklist_if(/*const*/ String prefix, int len);
-    // public static native int zts_init_set_roots(/*const*/ void* roots_data,  int len);
+    public static native int zts_init_set_roots(byte[] rootsData);
+    public static native byte[] zts_util_make_dummy_planet();
     public static native int zts_init_allow_net_cache(int allowed);
     public static native int zts_init_allow_peer_cache(int allowed);
     public static native int zts_init_allow_roots_cache(int allowed);
